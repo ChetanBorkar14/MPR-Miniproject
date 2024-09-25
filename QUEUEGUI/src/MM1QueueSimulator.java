@@ -1,7 +1,4 @@
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.text.DecimalFormat;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -15,44 +12,42 @@ public class MM1QueueSimulator extends JFrame {
     private JTextArea outputArea;
 
     public MM1QueueSimulator() {
-        // Set up the frame
-        setTitle("M/M/1 Queue Simulator");
-        setSize(400, 400);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null);
-        setLayout(new BorderLayout());
+    setTitle("M/M/1 Queue Simulator");
+    setSize(400, 250);
+    setLayout(new BoxLayout(getContentPane(), BoxLayout.Y_AXIS));
 
-        // Input panel for rates
-        JPanel inputPanel = new JPanel();
-        inputPanel.setLayout(new GridLayout(3, 2, 10, 10));
-        inputPanel.add(new JLabel("Arrival Rate (λ):"));
-        arrivalRateField = new JTextField();
-        inputPanel.add(arrivalRateField);
-        inputPanel.add(new JLabel("Service Rate (μ):"));
-        serviceRateField = new JTextField();
-        inputPanel.add(serviceRateField);
+    JPanel inputPanel = new JPanel();
+    inputPanel.setLayout(new BoxLayout(inputPanel, BoxLayout.Y_AXIS));
 
-        startButton = new JButton("Start Simulation");
-        inputPanel.add(startButton);
+    JPanel arrivalRatePanel = createInputPanel("Arrival Rate (λ):", arrivalRateField = new JTextField(5));
+    inputPanel.add(arrivalRatePanel);
+    JPanel serviceRatePanel = createInputPanel("Service Rate (μ):", serviceRateField = new JTextField(10));
+    inputPanel.add(serviceRatePanel);
 
-        add(inputPanel, BorderLayout.NORTH);
+    startButton = new JButton("Start Simulation");
+    inputPanel.add(startButton);
 
-        // Output area
-        outputArea = new JTextArea();
-        outputArea.setEditable(false);
-        add(new JScrollPane(outputArea), BorderLayout.CENTER);
+    add(inputPanel);
 
-        // Start button action
-        startButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                simulateQueue();
-            }
-        });
-    }
+    outputArea = new JTextArea();
+    outputArea.setEditable(false);
+    JScrollPane scrollPane = new JScrollPane(outputArea);
+    add(scrollPane);
 
-    private void simulateQueue() {
-    outputArea.setText("");
+    startButton.addActionListener(e -> simulateQueue());
+}
+
+private JPanel createInputPanel(String labelText, JTextField textField) {
+    JPanel panel = new JPanel();
+    panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
+    panel.add(new JLabel(labelText));
+    panel.add(textField);
+    return panel;
+}
+
+
+private void simulateQueue() {
+    outputArea.setText("");  
     try {
         double lambda = Double.parseDouble(arrivalRateField.getText());
         double mu = Double.parseDouble(serviceRateField.getText());
@@ -63,7 +58,7 @@ public class MM1QueueSimulator extends JFrame {
         }
 
         int customersServed = 0;
-        double totalWaitTime = 0;
+        double totalWaitTime = 0;  
         double totalServiceTime = 0;
         double currentTime = 0;
         double nextArrivalTime = getNextExponential(lambda);
@@ -73,24 +68,27 @@ public class MM1QueueSimulator extends JFrame {
 
         while (customersServed < 1000) {
             if (nextArrivalTime <= nextDepartureTime) {
-                // Process arrival
                 currentTime = nextArrivalTime;
                 if (!serverBusy) {
                     serverBusy = true;
-                    nextDepartureTime = currentTime + getNextExponential(mu);
+                    double serviceTime = getNextExponential(mu); 
+                    totalServiceTime += serviceTime;
+                    nextDepartureTime = currentTime + serviceTime;
                 } else {
                     queue.add(currentTime);
                 }
                 nextArrivalTime = currentTime + getNextExponential(lambda);
             } else {
-                // Process departure
                 currentTime = nextDepartureTime;
                 customersServed++;
-                double serviceTime = getNextExponential(mu);
-                totalServiceTime += serviceTime;
-                totalWaitTime += currentTime - (queue.isEmpty() ? currentTime - serviceTime : queue.poll());
+
                 if (!queue.isEmpty()) {
-                    nextDepartureTime = currentTime + getNextExponential(mu);
+                    double arrivalTime = queue.poll();
+                    double waitTime = currentTime - arrivalTime;
+                    totalWaitTime += waitTime;
+                    double serviceTime = getNextExponential(mu);
+                    totalServiceTime += serviceTime;
+                    nextDepartureTime = currentTime + serviceTime;
                 } else {
                     serverBusy = false;
                     nextDepartureTime = Double.MAX_VALUE;
@@ -98,13 +96,10 @@ public class MM1QueueSimulator extends JFrame {
             }
         }
 
-        // Calculate performance metrics
-        double avgWaitTime = totalWaitTime / customersServed;
-        double utilization = totalServiceTime / currentTime;
+        double avgWaitTime = totalWaitTime / customersServed; 
+        double utilization = totalServiceTime / currentTime;   
 
-        // Format the results
         DecimalFormat df = new DecimalFormat("#.####");
-
         outputArea.append("Simulation Results:\n");
         outputArea.append("Total Customers Served: " + customersServed + "\n");
         outputArea.append("Average Wait Time: " + df.format(avgWaitTime) + " units\n");
@@ -121,11 +116,6 @@ public class MM1QueueSimulator extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(new Runnable() {
-            @Override
-            public void run() {
-                new MM1QueueSimulator().setVisible(true);
-            }
-        });
+        SwingUtilities.invokeLater(() -> new MM1QueueSimulator().setVisible(true));
     }
 }
